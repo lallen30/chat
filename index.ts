@@ -7,7 +7,15 @@ import { COOKIE_SECRET } from './utils';
 import path from 'path';
 
 const app = express();
+
+import dotenv from 'dotenv';
+dotenv.config();
+
+console.log(`check SECRET_KEY: ${process.env.SECRET_KEY}`);
+console.log(`check PORT: ${process.env.PORT}`);
+
 const port = process.env.PORT || 3107;
+console.log(`Server running on port ${port}`);
 
 app.use(express.json());
 app.use(cookieParser(COOKIE_SECRET));

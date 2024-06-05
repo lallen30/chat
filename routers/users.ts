@@ -47,7 +47,8 @@ router.post('/login', async (req, res) => {
         return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const userToken = token || generateToken({ userId: user.id });
+    const userToken = token || generateToken({ id: user.id }); // Use id instead of userId
+
     await updateUserToken(user.id, userToken);
 
     res.cookie('userId', user.id, { sameSite: 'none', secure: true });
@@ -64,7 +65,7 @@ router.get('/token', (req, res) => {
     if (!userId) {
         return res.status(401).json({ error: 'Not authenticated' });
     }
-    const token = generateToken({ userId });
+    const token = generateToken({ id: userId });
     res.json({ token });
 });
 

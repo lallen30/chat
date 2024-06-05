@@ -5,11 +5,24 @@ const SECRET_KEY = process.env.SECRET_KEY;
 const COOKIE_SECRET = process.env.COOKIE_SECRET;
 const AT_KEY = process.env.AT_KEY;
 
-function generateToken(payload: any): string {
+interface User {
+  id: number;
+  // Add other properties if necessary
+}
+
+async function generateToken(user: User) {
   if (!SECRET_KEY) {
     throw new Error('SECRET_KEY is not defined in environment variables');
   }
-  return jwt.sign(payload, SECRET_KEY as jwt.Secret, { expiresIn: '1h' });
+  try {
+    const token = jwt.sign({ id: user.id }, SECRET_KEY as jwt.Secret, { expiresIn: '1h' });
+    const db = await setupDatabase(); // Ensure db is set up correctly
+    await db.run(`UPDATE users SET token = ? WHERE id = ?`, [token, user.id]);
+    return token;
+  } catch (error) {
+    console.error('Error generating token:', error);
+    throw error;
+  }
 }
 
 async function verifyToken(token: string) {

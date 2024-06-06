@@ -123,7 +123,9 @@ async function initConnection(threadId: string) {
     }
 }
 
-(function () {
+(async function () {
+    let loginForms = document.querySelectorAll('.login-form') as NodeListOf<HTMLElement>;
+    let chatAreas = document.querySelectorAll('.chat-area') as NodeListOf<HTMLElement>;
     const messages = document.getElementById('messages') as HTMLElement;
     const login = document.getElementById('login') as HTMLButtonElement;
     const logout = document.getElementById('logout') as HTMLButtonElement;
@@ -243,6 +245,9 @@ async function initConnection(threadId: string) {
         });
 
         if (res.ok) {
+            loginForms.forEach(form => form.style.display = 'none');
+            chatAreas.forEach(area => area.style.display = 'block');
+
             const data = await res.json();
             showMessage('Logged in');
             fetchUsers();
@@ -257,6 +262,8 @@ async function initConnection(threadId: string) {
             credentials: 'include' // Ensure cookies are included in the request
         });
         if (res.ok) {
+            loginForms.forEach(form => form.style.display = 'block');
+            chatAreas.forEach(area => area.style.display = 'none');
             showMessage('Logged out');
         } else {
             showMessage('Log out error');

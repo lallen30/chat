@@ -11,3 +11,7 @@ h1 {
     overflow: auto;
     margin-top: 1em;
 }
+
+.chat-area {
+    display: none;
+}

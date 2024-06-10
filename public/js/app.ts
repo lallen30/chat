@@ -55,19 +55,19 @@ function getCookie(name: string): string | undefined {
 }
 
 async function fetchToken(): Promise<string> {
-    const res = await fetch('/api/v1/users/token', {
-        credentials: 'include' // Ensure cookies are included in the request
-    });
-    if (res.ok) {
-        const data = await res.json();
-        return data.token;
+    const token = localStorage.getItem('userToken');
+    if (token) {
+        console.log(`Fetched token from local storage: ${token}`);
+        return token;
     }
-    throw new Error('Unable to fetch token');
+    throw new Error('Token not found in local storage');
 }
+
 
 async function initConnection(threadId: string) {
     try {
         const token = await fetchToken();
+        console.log(`Using token for WebSocket connection: ${token}`);
         closeConnection();
         const wsUrl = `ws://${window.location.hostname}:3107/thread/${threadId}?at=${token}`;
         console.log(`Connecting to WebSocket URL: ${wsUrl}`);
@@ -88,18 +88,17 @@ async function initConnection(threadId: string) {
             console.log('WebSocket connection closed');
             showMessage(`WebSocket connection closed for thread id ${threadId}`);
             if (ws.pingTimeout) {
-                if (typeof ws.pingTimeout === 'number') {
-                    clearTimeout(ws.pingTimeout);
-                } else {
-                    clearTimeout(ws.pingTimeout as NodeJS.Timeout);
-                }
+                clearTimeout(ws.pingTimeout as NodeJS.Timeout);
             }
         });
 
         ws.addEventListener('message', (msg: MessageEvent) => {
+            console.log(`Received WebSocket message: ${msg.data}`);
             if (isBinary(msg.data)) {
+                console.log('Binary message received');
                 heartbeat();
             } else {
+                console.log('Text message received');
                 try {
                     const data = JSON.parse(msg.data);
                     const senderId = getCookie('userId');
@@ -117,11 +116,17 @@ async function initConnection(threadId: string) {
                 }
             }
         });
+
+
     } catch (error) {
         console.error('Failed to initialize WebSocket connection:', error);
         showMessage('Failed to initialize WebSocket connection');
     }
 }
+
+
+
+
 
 (async function () {
     let loginForms = document.querySelectorAll('.login-form') as NodeListOf<HTMLElement>;
@@ -139,6 +144,8 @@ async function initConnection(threadId: string) {
             const res = await fetch('/api/v1/users/user_list', {
                 credentials: 'same-origin'
             });
+            console.log('Fetch response status:', res.status);
+
             if (res.ok) {
                 const users = await res.json();
                 const userId = getCookie('userId');
@@ -161,20 +168,66 @@ async function initConnection(threadId: string) {
                     }
                 });
             } else {
-                showMessage('Error fetching users');
+                showMessage('Error fetching users 1');
                 console.error('Error response fetching users:', res.status, res.statusText);
             }
         } catch (error) {
-            showMessage('Error fetching users');
+            showMessage('Error fetching users 2');
             console.error('Fetch error:', error);
         }
     }
 
-    refreshUsers.addEventListener('click', fetchUsers);
+    login.addEventListener('click', async () => {
+        const username = (document.getElementById('username') as HTMLInputElement).value;
+        const password = (document.getElementById('password') as HTMLInputElement).value;
+
+        const res = await fetch('/api/v1/users/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username, password }),
+            credentials: 'include' // Ensure cookies are included in the request
+        });
+
+        console.log('Login response status:', res.status);
+        const responseBody = await res.json();
+        console.log('Login response body:', responseBody);
+
+        if (res.ok) {
+            const { token, userId } = responseBody;
+            console.log(`User token: ${token}`);
+            console.log(`User ID: ${userId}`);
+
+            // Save the token to local storage
+            localStorage.setItem('userToken', token);
+
+            loginForms.forEach(form => form.style.display = 'none');
+            chatAreas.forEach(area => area.style.display = 'block');
+
+            showMessage('Logged in');
+
+            // Wait for the cookie to be set before fetching users
+            setTimeout(() => {
+                console.log(`Document cookie after login: ${document.cookie}`);
+                fetchUsers();
+            }, 1500); // Adjust the delay as necessary
+        } else {
+            showMessage('Log in error');
+            console.error('Login failed with status:', res.status);
+        }
+    });
+
+
+
+
 
     userDropdown.addEventListener('change', async () => {
         const receiverId = userDropdown.value;
         const senderId = getCookie('userId');
+
+        console.log(`Selected receiver ID: ${receiverId}`);
+        console.log(`Sender ID from cookie: ${senderId}`);
 
         if (!senderId || !receiverId) {
             showMessage('Sender or receiver missing');
@@ -184,6 +237,10 @@ async function initConnection(threadId: string) {
         const threadId = await createThreadIfNotExists(senderId, receiverId);
         initConnection(threadId);
     });
+
+
+    refreshUsers.addEventListener('click', fetchUsers);
+
 
     wsSend.addEventListener('click', async () => {
         const val = wsInput.value;
@@ -210,6 +267,7 @@ async function initConnection(threadId: string) {
         }
     });
 
+
     async function createThreadIfNotExists(user1Id: string, user2Id: string): Promise<string> {
         const res = await fetch('/api/v1/threads/create', {
             method: 'POST',
@@ -231,30 +289,6 @@ async function initConnection(threadId: string) {
         return user ? user.username : undefined;
     }
 
-    login.addEventListener('click', async () => {
-        const username = (document.getElementById('username') as HTMLInputElement).value;
-        const password = (document.getElementById('password') as HTMLInputElement).value;
-
-        const res = await fetch('/api/v1/users/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ username, password }),
-            credentials: 'include' // Ensure cookies are included in the request
-        });
-
-        if (res.ok) {
-            loginForms.forEach(form => form.style.display = 'none');
-            chatAreas.forEach(area => area.style.display = 'block');
-
-            const data = await res.json();
-            showMessage('Logged in');
-            fetchUsers();
-        } else {
-            showMessage('Log in error');
-        }
-    });
 
     logout.addEventListener('click', async () => {
         closeConnection();
@@ -271,5 +305,5 @@ async function initConnection(threadId: string) {
     });
 
     // Initial fetch of users
-    fetchUsers();
+    // fetchUsers();
 })();

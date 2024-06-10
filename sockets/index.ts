@@ -50,8 +50,8 @@ function sendAll(ws: ExtendedWebSocket, wss: WebSocketServer) {
     });
 }
 
-function sendThread(ws: ExtendedWebSocket, threadid: string) {
-    if (!threadid) {
+function sendThread(ws: ExtendedWebSocket, threadId: string) {
+    if (!threadId) {
         ws.on('close', () => {
             console.log('Connection closed');
         });
@@ -60,20 +60,20 @@ function sendThread(ws: ExtendedWebSocket, threadid: string) {
 
     const threads = clients.threads;
 
-    if (!threads[threadid]) {
-        threads[threadid] = [ws];
+    if (!threads[threadId]) {
+        threads[threadId] = [ws];
     } else {
-        threads[threadid].push(ws);
+        threads[threadId].push(ws);
     }
 
     ws.on('message', (msg: IExtRawData, isBinary: boolean) => {
         if (isBinary && msg.length === 1 && msg[0] === HEARTBEAT_VALUE) {
             ws.isAlive = true;
         } else {
-            threads[threadid].forEach((client: any) => {
-                const extClient = client as ExtendedWebSocket;
-                if (extClient.readyState === WebSocket.OPEN) {
-                    extClient.send(msg);
+            console.log(`Broadcasting message to thread ${threadId}: ${msg.toString()}`);
+            threads[threadId].forEach((client) => {
+                if (client !== ws && client.readyState === WebSocket.OPEN) {
+                    client.send(isBinary ? msg : msg.toString());
                 }
             });
         }
@@ -81,18 +81,18 @@ function sendThread(ws: ExtendedWebSocket, threadid: string) {
 
     ws.on('close', () => {
         console.log('Connection closed');
-
-        const idx = threads[threadid].indexOf(ws);
-
+        const idx = threads[threadId].indexOf(ws);
         if (idx >= 0) {
-            threads[threadid].splice(idx, 1);
-
-            if (threads[threadid].length === 0) {
-                delete threads[threadid];
+            threads[threadId].splice(idx, 1);
+            if (threads[threadId].length === 0) {
+                delete threads[threadId];
             }
         }
     });
 }
+
+
+
 
 export default function configureSockets(s: Server) {
     const wss = new WebSocketServer({ noServer: true });

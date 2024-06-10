@@ -10,20 +10,25 @@ interface User {
   // Add other properties if necessary
 }
 
-async function generateToken(user: User) {
+
+async function generateToken(user: User): Promise<string> {
   if (!SECRET_KEY) {
     throw new Error('SECRET_KEY is not defined in environment variables');
   }
   try {
-    const token = jwt.sign({ id: user.id }, SECRET_KEY as jwt.Secret, { expiresIn: '1h' });
+    const token = jwt.sign({ id: user.id }, SECRET_KEY, { expiresIn: '1h' });
     const db = await setupDatabase(); // Ensure db is set up correctly
     await db.run(`UPDATE users SET token = ? WHERE id = ?`, [token, user.id]);
-    return token;
+    return token; // Returning the token string
   } catch (error) {
     console.error('Error generating token:', error);
     throw error;
   }
 }
+
+
+
+
 
 async function verifyToken(token: string) {
   if (!SECRET_KEY) {

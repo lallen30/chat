@@ -40,20 +40,21 @@ router.get('/user_list', async (req, res) => {
 });
 
 router.post('/login', async (req, res) => {
-    const { username, password, token } = req.body;
+    const { username, password } = req.body;
 
     const user = await findUserByUsername(username);
     if (!user || !await bcrypt.compare(password, user.password)) {
         return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const userToken = token || generateToken({ id: user.id }); // Use id instead of userId
+    const userToken = await generateToken({ id: user.id });
 
     await updateUserToken(user.id, userToken);
 
-    res.cookie('userId', user.id, { sameSite: 'none', secure: true });
-    res.json({ token: userToken });
+    res.cookie('userId', user.id, { sameSite: 'lax', secure: false });
+    res.json({ token: userToken, userId: user.id });
 });
+
 
 router.post('/logout', (req, res) => {
     res.clearCookie('userId');
@@ -65,8 +66,11 @@ router.get('/token', (req, res) => {
     if (!userId) {
         return res.status(401).json({ error: 'Not authenticated' });
     }
-    const token = generateToken({ id: userId });
-    res.json({ token });
+    generateToken({ id: userId }).then(token => {
+        res.json({ token });
+    }).catch(err => {
+        res.status(500).json({ error: 'Error generating token' });
+    });
 });
 
 export default router;

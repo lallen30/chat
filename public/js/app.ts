@@ -64,6 +64,7 @@ async function fetchToken(): Promise<string> {
 }
 
 
+
 async function initConnection(threadId: string) {
     try {
         const token = await fetchToken();
@@ -88,19 +89,21 @@ async function initConnection(threadId: string) {
             console.log('WebSocket connection closed');
             showMessage(`WebSocket connection closed for thread id ${threadId}`);
             if (ws.pingTimeout) {
-                clearTimeout(ws.pingTimeout as NodeJS.Timeout);
+                if (typeof ws.pingTimeout === 'number') {
+                    clearTimeout(ws.pingTimeout);
+                } else {
+                    clearTimeout(ws.pingTimeout as NodeJS.Timeout);
+                }
             }
         });
 
         ws.addEventListener('message', (msg: MessageEvent) => {
-            console.log(`Received WebSocket message: ${msg.data}`);
             if (isBinary(msg.data)) {
-                console.log('Binary message received');
                 heartbeat();
             } else {
-                console.log('Text message received');
                 try {
                     const data = JSON.parse(msg.data);
+                    console.log('Received WebSocket message:', data);
                     const senderId = getCookie('userId');
                     if (data.type === 'threadMessages') {
                         data.messages.forEach((message: any) => {
@@ -116,13 +119,12 @@ async function initConnection(threadId: string) {
                 }
             }
         });
-
-
     } catch (error) {
         console.error('Failed to initialize WebSocket connection:', error);
         showMessage('Failed to initialize WebSocket connection');
     }
 }
+
 
 
 

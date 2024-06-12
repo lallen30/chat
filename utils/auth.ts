@@ -28,8 +28,6 @@ async function generateToken(user: User): Promise<string> {
 
 
 
-
-
 async function verifyToken(token: string) {
   if (!SECRET_KEY) {
     throw new Error('SECRET_KEY is not defined in environment variables');
@@ -37,7 +35,7 @@ async function verifyToken(token: string) {
   try {
     const decoded = jwt.verify(token, SECRET_KEY as jwt.Secret) as any;
     const db = await setupDatabase();
-    const user = await db.get('SELECT * FROM users WHERE id = ? AND token = ?', [decoded.userId, token]);
+    const user = await db.get('SELECT * FROM users WHERE id = ? AND token = ?', [decoded.id, token]); // Use decoded.id
 
     if (user) {
       return decoded;
@@ -50,6 +48,7 @@ async function verifyToken(token: string) {
     return null;
   }
 }
+
 
 function validToken(token: string | null): boolean {
   if (!SECRET_KEY || !token) {

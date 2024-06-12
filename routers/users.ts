@@ -17,14 +17,18 @@ async function updateUserToken(userId: number, token: string) {
 }
 
 router.post('/register', async (req, res) => {
-    const { username, password } = req.body;
+    const { id, username, password, email, token } = req.body; // Ensure WordPress ID (id) is provided
     const hashedPassword = await bcrypt.hash(password, 10);
 
     try {
         const db = await setupDatabase();
-        await db.run('INSERT INTO users (username, password) VALUES (?, ?)', [username, hashedPassword]);
+        await db.run(
+            'INSERT INTO users (id, username, email, password, token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+            [id, username, email, hashedPassword, token]
+        );
         res.status(201).json({ message: 'User registered' });
     } catch (err) {
+        console.error('Error registering user:', err); // Log the error for debugging
         res.status(500).json({ error: 'Error registering user' });
     }
 });
@@ -40,20 +44,23 @@ router.get('/user_list', async (req, res) => {
 });
 
 router.post('/login', async (req, res) => {
-    const { username, password } = req.body;
+    const { username, password, token } = req.body;
 
     const user = await findUserByUsername(username);
     if (!user || !await bcrypt.compare(password, user.password)) {
         return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const userToken = await generateToken({ id: user.id });
+    const userToken = token || await generateToken({ id: user.id });
 
     await updateUserToken(user.id, userToken);
 
     res.cookie('userId', user.id, { sameSite: 'lax', secure: false });
     res.json({ token: userToken, userId: user.id });
 });
+
+
+
 
 
 router.post('/logout', (req, res) => {

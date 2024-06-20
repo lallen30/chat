@@ -1,12 +1,12 @@
-import dotenv from 'dotenv';
-dotenv.config();
-
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
 import bcrypt from 'bcrypt';
 import setupDatabase from '../database';
 import { generateToken, verifyToken } from '../utils/auth';
 
 const router = Router();
+
+import dotenv from 'dotenv';
+dotenv.config();
 
 console.log('SECRET_KEY:', process.env.SECRET_KEY);
 console.log('COOKIE_SECRET:', process.env.COOKIE_SECRET);
@@ -30,13 +30,8 @@ async function updateUserToken(userId: number, token: string) {
     await db.run('UPDATE users SET token = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [token, userId]);
 }
 
-// Wrapper to handle async errors in routes
-const asyncHandler = (fn: (req: Request, res: Response) => Promise<any>) => (req: Request, res: Response, next: any) => {
-    fn(req, res).catch(next);
-};
-
 // Route to register a new user
-router.post('/register', asyncHandler(async (req: Request, res: Response) => {
+router.post('/register', async (req, res) => {
     const { id, username, password, email, token } = req.body; // Ensure WordPress ID (id) and token are provided
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -51,9 +46,9 @@ router.post('/register', asyncHandler(async (req: Request, res: Response) => {
         console.error('Error registering user:', err); // Log the error for debugging
         res.status(500).json({ error: 'Error registering user' });
     }
-}));
+});
 
-router.post('/check_user', asyncHandler(async (req: Request, res: Response) => {
+router.post('/check_user', async (req, res) => {
     const { id, username, email, token } = req.body;
 
     if (!id || !username || !email || !token) {
@@ -105,10 +100,10 @@ router.post('/check_user', asyncHandler(async (req: Request, res: Response) => {
         console.error('Error checking/registering user:', err); // Log the error for debugging
         res.status(500).json({ error: 'Error checking/registering user' });
     }
-}));
+});
 
 // Route to connect a user based on the token
-router.post('/connect', asyncHandler(async (req: Request, res: Response) => {
+router.post('/connect', async (req, res) => {
     const { token } = req.body;
     try {
         const user = await findUserByToken(token);
@@ -120,10 +115,10 @@ router.post('/connect', asyncHandler(async (req: Request, res: Response) => {
         console.error('Error connecting user:', err);
         res.status(500).json({ error: 'Error connecting user' });
     }
-}));
+});
 
 // Route to get user list
-router.get('/user_list', asyncHandler(async (req: Request, res: Response) => {
+router.get('/user_list', async (req, res) => {
     try {
         const db = await setupDatabase();
         const users = await db.all('SELECT id, username FROM users');
@@ -131,10 +126,10 @@ router.get('/user_list', asyncHandler(async (req: Request, res: Response) => {
     } catch (err) {
         res.status(500).json({ error: 'Error fetching users' });
     }
-}));
+});
 
 // Route to log in a user
-router.post('/login', asyncHandler(async (req: Request, res: Response) => {
+router.post('/login', async (req, res) => {
     const { username, password, token } = req.body;
 
     const user = await findUserByUsername(username);
@@ -148,16 +143,16 @@ router.post('/login', asyncHandler(async (req: Request, res: Response) => {
 
     res.cookie('userId', user.id, { sameSite: 'lax', secure: false });
     res.json({ token: userToken, userId: user.id });
-}));
+});
 
 // Route to log out a user
-router.post('/logout', (req: Request, res: Response) => {
+router.post('/logout', (req, res) => {
     res.clearCookie('userId');
     res.status(200).json({ message: 'Logged out' });
 });
 
 // Route to generate a new token
-router.get('/token', asyncHandler(async (req: Request, res: Response) => {
+router.get('/token', (req, res) => {
     const userId = req.cookies.userId;
     if (!userId) {
         return res.status(401).json({ error: 'Not authenticated' });
@@ -167,6 +162,6 @@ router.get('/token', asyncHandler(async (req: Request, res: Response) => {
     }).catch(err => {
         res.status(500).json({ error: 'Error generating token' });
     });
-}));
+});
 
 export default router;

@@ -1,7 +1,7 @@
 import cookieParser from 'cookie-parser';
 import { Server } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
-import { AT_KEY, COOKIE_SECRET, validToken } from '../utils';
+import { AT_KEY, COOKIE_SECRET, verifyToken } from '../utils';
 
 type IExtRawData = Buffer;
 
@@ -98,7 +98,7 @@ export default function configureSockets(s: Server) {
         console.log('Upgrade request:', req.url);
         socket.on('error', onSocketPreError);
 
-        cookieParser(COOKIE_SECRET)(req, {} as any, () => {
+        cookieParser(COOKIE_SECRET)(req, {} as any, async () => {
             const signedCookies = req.signedCookies;
             let at = signedCookies[AT_KEY as string];
 
@@ -108,10 +108,9 @@ export default function configureSockets(s: Server) {
             }
 
             console.log('Token for verification:', at);
-            console.log('Using SECRET_KEY:', process.env.SECRET_KEY);
 
-            const result = validToken(at);
-            console.log('validToken result:', result);
+            const result = await verifyToken(at);
+            console.log('verifyToken result:', result);
 
             if (!result) {
                 console.log('Invalid token');

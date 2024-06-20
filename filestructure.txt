@@ -1,0 +1,36 @@
+file structure:
+/project-root
+│
+├── /public
+│   └── /css
+│      └── styles.css
+│   └── /js
+│      └── app.ts
+│
+├── /routers
+│   └── api.ts
+│   └── index.ts
+│   └── threads.ts
+│   └── users.ts
+│
+├── /sockets
+│   └── index.ts
+│
+├── /typings
+│   └── index.d.ts
+│   └── ws.d.ts
+│
+├── /utils
+│   └── auth.ts
+│   └── index.ts
+│
+├── database.db
+├── database.ts
+├── ecosystem.config.js
+├── error.html
+├── index.html
+├── index.ts
+├── notfound.html
+├── package.json
+├── README.md
+└── tsconfig.json

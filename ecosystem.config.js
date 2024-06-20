@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 module.exports = {
   apps: [
     {
@@ -9,15 +11,19 @@ module.exports = {
       max_memory_restart: '1G',
       env: {
         NODE_ENV: 'development',
-        PORT: 3107,
-        SECRET_KEY: '83d9df5d584c994a773482fe764484fbde4d91168a91a328040f57eaa32e62f5',
-        COOKIE_SECRET: '83d9df5d584c994a773482fe764484fbde4d91168a91a328040f57eaa32e62f5'
+        PORT: process.env.PORT,
+        SECRET_KEY: process.env.SECRET_KEY,
+        COOKIE_SECRET: process.env.COOKIE_SECRET,
+        AT_KEY: process.env.AT_KEY,
+        PASSCODE: process.env.PASSCODE
       },
       env_production: {
         NODE_ENV: 'production',
-        PORT: 3107,
-        SECRET_KEY: '83d9df5d584c994a773482fe764484fbde4d91168a91a328040f57eaa32e62f5',
-        COOKIE_SECRET: '83d9df5d584c994a773482fe764484fbde4d91168a91a328040f57eaa32e62f5'
+        PORT: process.env.PORT,
+        SECRET_KEY: process.env.SECRET_KEY,
+        COOKIE_SECRET: process.env.COOKIE_SECRET,
+        AT_KEY: process.env.AT_KEY,
+        PASSCODE: process.env.PASSCODE
       }
     }
   ]

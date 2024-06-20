@@ -91,9 +91,6 @@ function sendThread(ws: ExtendedWebSocket, threadId: string) {
     });
 }
 
-
-
-
 export default function configureSockets(s: Server) {
     const wss = new WebSocketServer({ noServer: true });
 
@@ -110,7 +107,13 @@ export default function configureSockets(s: Server) {
                 at = url.searchParams.get('at');
             }
 
-            if (!validToken(at)) {
+            console.log('Token for verification:', at);
+            console.log('Using SECRET_KEY:', process.env.SECRET_KEY);
+
+            const result = validToken(at);
+            console.log('validToken result:', result);
+
+            if (!result) {
                 console.log('Invalid token');
                 socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
                 socket.destroy();

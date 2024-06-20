@@ -1,3 +1,12 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
+// console.log(`SECRET_KEY: ${process.env.SECRET_KEY}`);
+// console.log(`COOKIE_SECRET: ${process.env.COOKIE_SECRET}`);
+// console.log(`AT_KEY: ${process.env.AT_KEY}`);
+// console.log(`PORT: ${process.env.PORT}`);
+
+
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import configureRoutes from './routers';
@@ -6,19 +15,14 @@ import http from 'http';
 import { COOKIE_SECRET } from './utils';
 import path from 'path';
 
-const app = express();
-
-import dotenv from 'dotenv';
-dotenv.config();
-
 console.log(`check SECRET_KEY: ${process.env.SECRET_KEY}`);
 console.log(`check PORT: ${process.env.PORT}`);
 
+const app = express();
 const port = process.env.PORT || 3107;
-console.log(`Server running on port ${port}`);
 
 app.use(express.json());
-app.use(cookieParser(COOKIE_SECRET));
+app.use(cookieParser(COOKIE_SECRET)); // Ensure COOKIE_SECRET is used
 
 // Serve static files from the 'dist' directory
 const staticPath = path.join(__dirname);

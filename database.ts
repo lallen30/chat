@@ -40,6 +40,7 @@ async function setupDatabase() {
             thread_id INTEGER,
             sender_id INTEGER,
             receiver_id INTEGER,
+            sent INTEGER,
             content TEXT,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(thread_id) REFERENCES threads(id),

@@ -2,11 +2,12 @@ interface CustomWebSocket extends WebSocket {
     pingTimeout?: NodeJS.Timeout | number;
 }
 
-let ws: CustomWebSocket;
+let ws: CustomWebSocket | null = null;
 
 function closeConnection() {
     if (ws) {
         ws.close();
+        ws = null;
     }
 }
 
@@ -35,7 +36,9 @@ function heartbeat() {
     }
 
     ws.pingTimeout = setTimeout(() => {
-        ws.close();
+        if (ws) {
+            ws.close();
+        }
     }, 6000);
 
     const data = new Uint8Array(1);
@@ -82,13 +85,13 @@ async function initConnection(threadId: string) {
         ws.addEventListener('open', () => {
             console.log('WebSocket connection established');
             showMessage(`WebSocket connection established for thread id ${threadId}`);
-            ws.send(JSON.stringify({ type: 'join', threadId }));
+            ws!.send(JSON.stringify({ type: 'join', threadId }));
         });
 
         ws.addEventListener('close', () => {
             console.log('WebSocket connection closed');
             showMessage(`WebSocket connection closed for thread id ${threadId}`);
-            if (ws.pingTimeout) {
+            if (ws?.pingTimeout) {
                 if (typeof ws.pingTimeout === 'number') {
                     clearTimeout(ws.pingTimeout);
                 } else {
@@ -134,6 +137,7 @@ async function initConnection(threadId: string) {
     let loginForms = document.querySelectorAll('.login-form') as NodeListOf<HTMLElement>;
     let chatAreas = document.querySelectorAll('.chat-area') as NodeListOf<HTMLElement>;
     const messages = document.getElementById('messages') as HTMLElement;
+    const messageArea = document.getElementById('message-area') as HTMLButtonElement;
     const login = document.getElementById('login') as HTMLButtonElement;
     const logout = document.getElementById('logout') as HTMLButtonElement;
     const wsSend = document.getElementById('ws-send') as HTMLButtonElement;
@@ -170,11 +174,11 @@ async function initConnection(threadId: string) {
                     }
                 });
             } else {
-                showMessage('Error fetching users 1');
+                showMessage('Error fetching users - 1');
                 console.error('Error response fetching users:', res.status, res.statusText);
             }
         } catch (error) {
-            showMessage('Error fetching users 2');
+            showMessage('Error fetching users - 2');
             console.error('Fetch error:', error);
         }
     }
@@ -225,26 +229,37 @@ async function initConnection(threadId: string) {
 
 
     userDropdown.addEventListener('change', async () => {
+        messageArea.style.display = 'block';
         const receiverId = userDropdown.value;
         const senderId = getCookie('userId');
 
         console.log(`Selected receiver ID: ${receiverId}`);
         console.log(`Sender ID from cookie: ${senderId}`);
 
-        if (!senderId || !receiverId) {
+        if (senderId && receiverId) {
+            const threadId = await createThreadIfNotExists(senderId, receiverId);
+            initConnection(threadId);
+        } else {
             showMessage('Sender or receiver missing');
-            return;
         }
-
-        const threadId = await createThreadIfNotExists(senderId, receiverId);
-        initConnection(threadId);
     });
 
 
     refreshUsers.addEventListener('click', fetchUsers);
 
 
-    wsSend.addEventListener('click', async () => {
+    wsInput.addEventListener('keypress', async (event) => {
+        if (event.key === 'Enter') {
+            sendMessage();
+        }
+    });
+
+    wsSend.addEventListener('click', sendMessage);
+
+
+    async function sendMessage() {
+        console.log('wsSend button clicked or Enter key pressed');
+
         const val = wsInput.value;
         const receiverId = userDropdown.value;
         const senderId = getCookie('userId');
@@ -253,21 +268,22 @@ async function initConnection(threadId: string) {
         console.log(`Receiver ID: ${receiverId}`);
         console.log(`Message: ${val}`);
 
-        if (!val || !receiverId || !senderId) {
-            showMessage('Message, sender, or receiver missing');
-            return;
-        }
+        if (val && receiverId && senderId) {
+            const threadId = await createThreadIfNotExists(senderId, receiverId);
+            const senderUsername = getUsernameById(senderId);
 
-        const threadId = await createThreadIfNotExists(senderId, receiverId);
-        const senderUsername = getUsernameById(senderId);
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'message', threadId, senderId, receiverId, senderUsername, content: val }));
-            showMessage(`${senderUsername}: ${val}`);
-            wsInput.value = '';
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'message', threadId, senderId, receiverId, senderUsername, content: val }));
+                showMessage(`${senderUsername}: ${val}`);
+                wsInput.value = '';
+            } else {
+                showMessage('WebSocket connection not open');
+            }
         } else {
-            showMessage('WebSocket connection not open');
+            showMessage('Message, sender, or receiver missing');
         }
-    });
+    }
+
 
 
     async function createThreadIfNotExists(user1Id: string, user2Id: string): Promise<string> {
@@ -278,8 +294,12 @@ async function initConnection(threadId: string) {
             },
             body: JSON.stringify({ user1_id: user1Id, user2_id: user2Id })
         });
-        const thread = await res.json();
-        return thread.id;
+        if (res.ok) {
+            const thread = await res.json();
+            return thread.id;
+        } else {
+            throw new Error('Failed to create or retrieve thread');
+        }
     }
 
     function getUsernameById(userId: string): string | undefined {
@@ -306,6 +326,7 @@ async function initConnection(threadId: string) {
         }
     });
 
+    await fetchUsers();
     // Initial fetch of users
     // fetchUsers();
 })();

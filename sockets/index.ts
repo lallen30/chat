@@ -2,6 +2,7 @@ import cookieParser from 'cookie-parser';
 import { Server } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { AT_KEY, COOKIE_SECRET, verifyToken } from '../utils';
+import setupDatabase from '../database';
 
 type IExtRawData = Buffer;
 
@@ -50,7 +51,15 @@ function sendAll(ws: ExtendedWebSocket, wss: WebSocketServer) {
     });
 }
 
-function sendThread(ws: ExtendedWebSocket, threadId: string) {
+async function saveMessageToDatabase(threadId: string, senderId: string, receiverId: string, content: string, sent: string) {
+    const db = await setupDatabase();
+    await db.run(`
+        INSERT INTO messages (thread_id, sender_id, receiver_id, content, sent) 
+        VALUES (?, ?, ?, ?, ?)
+    `, [threadId, senderId, receiverId, content, sent]);
+}
+
+async function sendThread(ws: ExtendedWebSocket, threadId: string) {
     if (!threadId) {
         ws.on('close', () => {
             console.log('Connection closed');
@@ -66,21 +75,40 @@ function sendThread(ws: ExtendedWebSocket, threadId: string) {
         threads[threadId].push(ws);
     }
 
-    ws.on('message', (msg: IExtRawData, isBinary: boolean) => {
+    ws.on('message', async (msg: IExtRawData, isBinary: boolean) => {
         if (isBinary && msg.length === 1 && msg[0] === HEARTBEAT_VALUE) {
             ws.isAlive = true;
         } else {
-            console.log(`Broadcasting message to thread ${threadId}: ${msg.toString()}`);
-            threads[threadId].forEach((client) => {
-                if (client !== ws && client.readyState === WebSocket.OPEN) {
-                    client.send(isBinary ? msg : msg.toString());
+            try {
+                const data = JSON.parse(msg.toString());
+                if (data.type === 'message') {
+                    const { senderId, receiverId, content } = data;
+                    console.log(`Broadcasting message to thread ${threadId}: ${content}`);
+
+                    if (threads[threadId].length === 1) {
+                        await saveMessageToDatabase(threadId, senderId, receiverId, content, '0');
+                        console.log('No active connections for this thread, message saved to database.');
+                    } else {
+                        threads[threadId].forEach((client) => {
+                            if (client !== ws && client.readyState === WebSocket.OPEN) {
+                                client.send(isBinary ? msg : msg.toString());
+                            }
+                        });
+                        await saveMessageToDatabase(threadId, senderId, receiverId, content, '1');
+                    }
                 }
-            });
+            } catch (error) {
+                console.error('Failed to process message:', error);
+            }
         }
     });
 
-    ws.on('close', () => {
-        console.log('Connection closed');
+    ws.on('close', (event: CloseEvent) => {
+        console.log(`WebSocket connection closed: code=${event.code}, reason=${event.reason}`);
+        // Replace this.showMessage with an appropriate logging or function call.
+        // For example, log the message:
+        console.log({ senderId: 0, senderUsername: 'system', content: `WebSocket connection closed: ${event.reason}`, threadId: 0 });
+
         const idx = threads[threadId].indexOf(ws);
         if (idx >= 0) {
             threads[threadId].splice(idx, 1);

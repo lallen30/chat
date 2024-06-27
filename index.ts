@@ -1,12 +1,6 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-// console.log(`SECRET_KEY: ${process.env.SECRET_KEY}`);
-// console.log(`COOKIE_SECRET: ${process.env.COOKIE_SECRET}`);
-// console.log(`AT_KEY: ${process.env.AT_KEY}`);
-// console.log(`PORT: ${process.env.PORT}`);
-
-
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import configureRoutes from './routers';
@@ -24,13 +18,20 @@ const port = process.env.PORT || 3107;
 app.use(express.json());
 app.use(cookieParser(COOKIE_SECRET)); // Ensure COOKIE_SECRET is used
 
-// Serve static files from the 'dist' directory
-const staticPath = path.join(__dirname);
+// Serve static files from the 'public' directory
+const staticPath = path.join(__dirname, 'public');
 console.log(`__dirname: ${__dirname}`);
 console.log(`Resolved static path: ${staticPath}`);
 app.use(express.static(staticPath));
 
-configureRoutes(app, staticPath);
+// Use the configured routes
+configureRoutes(app, __dirname);
+
+// Error handling middleware
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error(err.stack);
+    res.status(500).send('Internal Server Error');
+});
 
 console.log(`Attempting to run server on port ${port}`);
 

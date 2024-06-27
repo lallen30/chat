@@ -5,7 +5,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebSocket Chat App</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .login-form {
+            display: block;
+        }
+
+        .chat-area {
+            display: none;
+        }
+
+        #message-area {
+            display: none;
+        }
+    </style>
 </head>
 
 <body>
@@ -25,7 +37,7 @@
         <button id="refresh-users">Refresh Users</button>
     </div>
 
-    <div>
+    <div id="message-area">
         <h2>Messages</h2>
         <pre id="messages"></pre>
         <input type="text" id="ws-input" placeholder="Type a message">
